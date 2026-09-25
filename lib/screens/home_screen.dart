@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../models/daily_forecast.dart';
 import '../models/observation.dart';
 import '../models/station.dart';
 import '../services/mesonet_service.dart';
+import '../services/nws_forecast_service.dart';
 
 const Duration _refreshInterval = Duration(minutes: 5);
 
@@ -18,15 +20,19 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final MesonetService _service = MesonetService();
+  final NwsForecastService _forecastService = NwsForecastService();
   Timer? _refreshTimer;
 
   List<Station> _stations = [];
   Map<String, Observation> _observations = {};
+  List<DailyForecast> _forecast = [];
   Station? _selectedStation;
 
   bool _loadingStations = true;
   bool _loadingObservation = false;
+  bool _loadingForecast = false;
   String? _error;
+  String? _forecastError;
   DateTime? _lastRefreshed;
 
   @override
@@ -43,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _refreshTimer?.cancel();
     _service.dispose();
+    _forecastService.dispose();
     super.dispose();
   }
 
@@ -58,7 +65,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _selectedStation = stations.isNotEmpty ? stations.first : null;
         _loadingStations = false;
       });
-      await _loadObservations();
+      final station = _selectedStation;
+      await Future.wait([
+        _loadObservations(),
+        if (station != null) _loadForecast(station),
+      ]);
     } catch (e) {
       setState(() {
         _error = 'Unable to load stations: $e';
@@ -85,6 +96,45 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _loadForecast(Station station) async {
+    setState(() {
+      _loadingForecast = true;
+      _forecastError = null;
+    });
+    try {
+      final forecast = await _forecastService.fetchDailyForecast(station);
+      if (!mounted || _selectedStation?.id != station.id) return;
+      setState(() {
+        _forecast = forecast;
+        _loadingForecast = false;
+      });
+    } catch (e) {
+      if (!mounted || _selectedStation?.id != station.id) return;
+      setState(() {
+        _forecastError = 'Unable to load the NWS forecast: $e';
+        _loadingForecast = false;
+      });
+    }
+  }
+
+  void _selectStation(Station? station) {
+    setState(() {
+      _selectedStation = station;
+      _forecast = [];
+      _forecastError = null;
+      _loadingForecast = station != null;
+    });
+    if (station != null) _loadForecast(station);
+  }
+
+  Future<void> _refresh() async {
+    final station = _selectedStation;
+    await Future.wait([
+      _loadObservations(),
+      if (station != null) _loadForecast(station),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final observation = _selectedStation == null
@@ -94,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('ISU Soil Moisture App')),
       body: RefreshIndicator(
-        onRefresh: _loadObservations,
+        onRefresh: _refresh,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -105,6 +155,8 @@ class _HomeScreenState extends State<HomeScreen> {
               const Center(child: CircularProgressIndicator())
             else if (_selectedStation != null)
               _buildObservationCard(observation),
+            if (!_loadingStations && _selectedStation != null)
+              _buildForecastSection(),
           ],
         ),
       ),
@@ -127,8 +179,93 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           )
           .toList(),
-      onChanged: (station) => setState(() => _selectedStation = station),
+      onChanged: _selectStation,
     );
+  }
+
+  Widget _buildForecastSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.cloud_outlined),
+                const SizedBox(width: 8),
+                Text(
+                  'NWS Forecast',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ],
+            ),
+            const Divider(),
+            if (_loadingForecast && _forecast.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (_forecastError != null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_forecastError!),
+                  TextButton.icon(
+                    onPressed: _selectedStation == null
+                        ? null
+                        : () => _loadForecast(_selectedStation!),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              )
+            else if (_forecast.isEmpty)
+              const Text('No daily forecast available.')
+            else
+              for (final day in _forecast) _buildForecastDay(day),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForecastDay(DailyForecast day) {
+    final precipitation = day.precipitationChance == null
+        ? 'Precip --'
+        : 'Precip ${day.precipitationChance}%';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  day.name,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Text(precipitation),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'High ${_formatTemperature(day.high, day.temperatureUnit)}  '
+            'Low ${_formatTemperature(day.low, day.temperatureUnit)}',
+          ),
+          if (day != _forecast.last) const Divider(height: 16),
+        ],
+      ),
+    );
+  }
+
+  String _formatTemperature(int? value, String unit) {
+    if (value == null) return '--';
+    return '$value°$unit';
   }
 
   Widget _buildError(String message) {
