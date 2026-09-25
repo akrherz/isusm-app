@@ -35,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _error;
   String? _forecastError;
   DateTime? _lastRefreshed;
+  int _forecastRequestGeneration = 0;
 
   @override
   void initState() {
@@ -98,19 +99,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadForecast(Station station) async {
+    final requestGeneration = ++_forecastRequestGeneration;
     setState(() {
       _loadingForecast = true;
       _forecastError = null;
     });
     try {
       final forecast = await _forecastService.fetchDailyForecast(station);
-      if (!mounted || _selectedStation?.id != station.id) return;
+      if (!mounted ||
+          _forecastRequestGeneration != requestGeneration ||
+          _selectedStation?.id != station.id) {
+        return;
+      }
       setState(() {
         _forecast = forecast;
         _loadingForecast = false;
       });
     } catch (e) {
-      if (!mounted || _selectedStation?.id != station.id) return;
+      if (!mounted ||
+          _forecastRequestGeneration != requestGeneration ||
+          _selectedStation?.id != station.id) {
+        return;
+      }
       setState(() {
         _forecastError = 'Unable to load the NWS forecast: $e';
         _loadingForecast = false;
@@ -167,6 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildStationSelector() {
     return DropdownButtonFormField<Station>(
+      key: ValueKey(_selectedStation?.id),
       initialValue: _selectedStation,
       isExpanded: true,
       decoration: const InputDecoration(
