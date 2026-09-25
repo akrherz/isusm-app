@@ -8,6 +8,7 @@ import '../models/observation.dart';
 import '../models/station.dart';
 import '../services/mesonet_service.dart';
 import '../services/nws_forecast_service.dart';
+import '../widgets/station_map.dart';
 
 const Duration _refreshInterval = Duration(minutes: 5);
 
@@ -150,6 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _buildStationSelector(),
             const SizedBox(height: 16),
+            _buildStationMap(),
             if (_error != null) _buildError(_error!),
             if (_loadingStations)
               const Center(child: CircularProgressIndicator())
@@ -180,6 +182,41 @@ class _HomeScreenState extends State<HomeScreen> {
           )
           .toList(),
       onChanged: _selectStation,
+    );
+  }
+
+  Widget _buildStationMap() {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            child: Row(
+              children: [
+                const Icon(Icons.map_outlined),
+                const SizedBox(width: 8),
+                Text(
+                  'Station Map',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ],
+            ),
+          ),
+          if (_loadingStations)
+            const SizedBox(
+              height: 320,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else
+            StationMap(
+              stations: _stations,
+              selectedStation: _selectedStation,
+              onStationSelected: _selectStation,
+            ),
+        ],
+      ),
     );
   }
 
