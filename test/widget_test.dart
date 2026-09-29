@@ -11,5 +11,6 @@ void main() {
     await tester.pumpWidget(const IsusmApp());
 
     expect(find.text('ISU Soil Moisture App'), findsOneWidget);
+    expect(find.text('Add stations'), findsOneWidget);
   });
 }
