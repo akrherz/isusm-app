@@ -207,17 +207,22 @@ class _HomeScreenState extends State<HomeScreen> {
               .map((station) => station.id),
         );
     });
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setStringList(
-      _stationIdsPreferenceKey,
-      List<String>.of(_stationIds),
-    );
     for (final station in _selectedStations) {
       if (!previousIds.contains(station.id)) _loadForecast(station);
     }
     for (final removedId in previousIds.difference(_stationIds.toSet())) {
       _forecastRequestGenerations[removedId] =
           (_forecastRequestGenerations[removedId] ?? 0) + 1;
+    }
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setStringList(
+        _stationIdsPreferenceKey,
+        List<String>.of(_stationIds),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = 'Unable to save station selection: $e');
     }
   }
 
