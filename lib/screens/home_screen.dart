@@ -295,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Card(
       child: ExpansionTile(
         leading: const Icon(Icons.map_outlined),
-        title: const Text('Explore station map'),
+        title: const Text('Explore station data map'),
         children: [
           if (_loadingStations)
             const SizedBox(
@@ -305,9 +305,8 @@ class _HomeScreenState extends State<HomeScreen> {
           else
             StationMap(
               stations: _stations,
-              selectedStation: _selectedStations.isEmpty
-                  ? null
-                  : _selectedStations.first,
+              observations: _observations,
+              selectedStationIds: _stationIds.toSet(),
               onStationSelected: (station) =>
                   _updateStationSelection({..._stationIds, station.id}),
             ),
