@@ -189,6 +189,13 @@ class _HomeScreenState extends State<HomeScreen> {
     await _updateStationSelection(updatedIds);
   }
 
+  Future<void> _openStationManagerFromDrawer() async {
+    Navigator.pop(context);
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted || _loadingStations) return;
+    await _manageStations();
+  }
+
   Future<void> _updateStationSelection(Set<String> stationIds) async {
     final previousIds = Set<String>.of(_stationIds);
     setState(() {
@@ -225,6 +232,46 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('ISU Soil Moisture App')),
+      drawer: NavigationDrawer(
+        selectedIndex: 0,
+        onDestinationSelected: (index) {
+          if (index == 1) {
+            _openStationManagerFromDrawer();
+          } else {
+            Navigator.pop(context);
+          }
+        },
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 16, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ISU Soil Moisture',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Network dashboard',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          const NavigationDrawerDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard),
+            label: Text('Dashboard'),
+          ),
+          NavigationDrawerDestination(
+            icon: const Icon(Icons.sensors_outlined),
+            selectedIcon: const Icon(Icons.sensors),
+            label: const Text('Stations'),
+            enabled: !_loadingStations,
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
