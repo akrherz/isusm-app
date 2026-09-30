@@ -10,6 +10,8 @@ import '../models/station.dart';
 import '../services/mesonet_service.dart';
 import '../services/nws_forecast_service.dart';
 import '../widgets/station_map.dart';
+import '../widgets/soil_moisture_profile.dart';
+import '../widgets/station_picker_dialog.dart';
 
 const Duration _refreshInterval = Duration(minutes: 5);
 const String _stationIdsPreferenceKey = 'dashboard_station_ids';
@@ -143,46 +145,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _stations.where((station) => _stationIds.contains(station.id)).toList();
 
   Future<void> _manageStations() async {
-    final selectedIds = Set<String>.of(_stationIds);
     final updatedIds = await showDialog<Set<String>>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Choose stations'),
-          content: SizedBox(
-            width: 420,
-            height: 420,
-            child: ListView.builder(
-              itemCount: _stations.length,
-              itemBuilder: (context, index) {
-                final station = _stations[index];
-                return CheckboxListTile(
-                  value: selectedIds.contains(station.id),
-                  title: Text(station.name),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                  onChanged: (selected) => setDialogState(() {
-                    if (selected ?? false) {
-                      selectedIds.add(station.id);
-                    } else {
-                      selectedIds.remove(station.id);
-                    }
-                  }),
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, selectedIds),
-              child: const Text('Done'),
-            ),
-          ],
-        ),
+      builder: (context) => StationPickerDialog(
+        stations: _stations,
+        selectedStationIds: _stationIds.toSet(),
       ),
     );
     if (updatedIds == null || !mounted) return;
@@ -359,12 +326,40 @@ class _HomeScreenState extends State<HomeScreen> {
               stations: _stations,
               observations: _observations,
               selectedStationIds: _stationIds.toSet(),
-              onStationSelected: (station) =>
-                  _updateStationSelection({..._stationIds, station.id}),
+              onStationSelected: _handleMapStationSelected,
             ),
         ],
       ),
     );
+  }
+
+  void _handleMapStationSelected(Station station) {
+    final messenger = ScaffoldMessenger.of(context);
+    if (_stationIds.contains(station.id)) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('${station.name} is already in My stations.')),
+        );
+      return;
+    }
+
+    _updateStationSelection({..._stationIds, station.id});
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('Added ${station.name} to My stations.'),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () {
+              final updatedIds = Set<String>.of(_stationIds)
+                ..remove(station.id);
+              _updateStationSelection(updatedIds);
+            },
+          ),
+        ),
+      );
   }
 
   Widget _buildForecastSection(Station station) {
@@ -540,6 +535,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
+            SoilMoistureProfile(observation: observation),
             ExpansionTile(
               title: const Text('All observations'),
               children: [
