@@ -1,0 +1,2 @@
+package_name("edu.iastate.mesonet.isusm_app")
+json_key_data(ENV["PLAY_JSON_KEY"])

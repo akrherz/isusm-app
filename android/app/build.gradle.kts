@@ -9,19 +9,10 @@ plugins {
 
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
-gradle.taskGraph.whenReady {
-    val releaseBuildRequested = allTasks.any { task ->
-        task.name == "assembleRelease" || task.name == "bundleRelease"
-    }
-    if (releaseBuildRequested && !keystorePropertiesFile.exists()) {
-        throw GradleException(
-            "Missing android/key.properties. Configure the Play upload keystore before building a release bundle.",
-        )
-    }
-    if (releaseBuildRequested) {
-        FileInputStream(keystorePropertiesFile).use { inputStream ->
-            keystoreProperties.load(inputStream)
-        }
+val hasKeystoreProperties = keystorePropertiesFile.exists()
+if (hasKeystoreProperties) {
+    FileInputStream(keystorePropertiesFile).use { inputStream ->
+        keystoreProperties.load(inputStream)
     }
 }
 
@@ -52,11 +43,18 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.create("release") {
-                keyAlias = keystoreProperties["keyAlias"] as String?
-                keyPassword = keystoreProperties["keyPassword"] as String?
-                storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-                storePassword = keystoreProperties["storePassword"] as String?
+            signingConfig = if (hasKeystoreProperties) {
+                signingConfigs.create("release") {
+                    keyAlias = keystoreProperties["keyAlias"] as String?
+                    keyPassword = keystoreProperties["keyPassword"] as String?
+                    storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+                    storePassword = keystoreProperties["storePassword"] as String?
+                }
+            } else {
+                // No upload keystore configured (e.g. CI/PR smoke builds): fall back to
+                // debug signing so `flutter build appbundle --release` still succeeds.
+                // Not suitable for publishing to Google Play.
+                signingConfigs.getByName("debug")
             }
         }
     }
