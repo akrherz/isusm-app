@@ -49,7 +49,7 @@ jobs:
           storePassword=$ANDROID_KEYSTORE_PASSWORD
           keyPassword=$ANDROID_KEY_PASSWORD
           keyAlias=$ANDROID_KEY_ALIAS
-          storeFile=upload-keystore.jks
+          storeFile=$(pwd)/upload-keystore.jks
           EOF
 
       - name: Build & upload to Google Play
