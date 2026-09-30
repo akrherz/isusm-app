@@ -10,6 +10,7 @@ import '../models/station.dart';
 import '../services/mesonet_service.dart';
 import '../services/nws_forecast_service.dart';
 import '../widgets/station_map.dart';
+import '../widgets/soil_moisture_profile.dart';
 
 const Duration _refreshInterval = Duration(minutes: 5);
 const String _stationIdsPreferenceKey = 'dashboard_station_ids';
@@ -540,6 +541,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
+            SoilMoistureProfile(observation: observation),
             ExpansionTile(
               title: const Text('All observations'),
               children: [
