@@ -177,7 +177,10 @@ class _StationMapState extends State<StationMap> {
       width: 52,
       height: 52,
       child: Tooltip(
-        message: '${station.name}\n${_variable.label}: $reading',
+        message:
+            '${station.name}\n'
+            '${selected ? 'In My stations' : 'Tap to add to My stations'}\n'
+            '${_variable.label}: $reading',
         child: Material(
           color: Colors.transparent,
           child: InkWell(
