@@ -50,6 +50,7 @@ class _StationPickerDialogState extends State<StationPickerDialog> {
   Widget build(BuildContext context) {
     final visibleStations = _visibleStations;
     return AlertDialog(
+      scrollable: true,
       title: Text('Choose stations (${_selectedStationIds.length} selected)'),
       content: SizedBox(
         width: 420,
