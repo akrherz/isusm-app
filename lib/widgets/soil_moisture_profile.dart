@@ -16,8 +16,10 @@ class SoilMoistureProfile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Soil moisture profile',
-              style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'Soil moisture profile',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 8),
           _buildDepthRow(context, '12 in', observation.soil12m),
           const SizedBox(height: 6),
